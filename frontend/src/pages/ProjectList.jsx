@@ -141,12 +141,29 @@ export default function ProjectList() {
                 </div>
 
                 {/* Cost Summary Overlay */}
-                <div className="bg-gradient-to-tr from-blue-50 to-indigo-50 rounded-2xl p-4 border border-blue-100 relative overflow-hidden">
+                <div className="bg-linear-to-tr from-blue-50 to-indigo-50 rounded-2xl p-4 border border-blue-100 relative overflow-hidden mb-3">
                   <div className="absolute top-0 right-0 p-2 opacity-10">
                     <Bot className="w-12 h-12" />
                   </div>
-                  <p className="text-xs text-blue-500 font-bold mb-1 uppercase tracking-wider">AI Estimate</p>
+                  <p className="text-xs text-blue-500 font-bold mb-1 uppercase tracking-wider">AI Analysis Result</p>
                   <p className="text-2xl font-black text-blue-700">${proj.estimatedCost?.total?.toLocaleString()}</p>
+                  
+                  <div className="flex gap-4 mt-2 pt-2 border-t border-blue-100/50">
+                    <div>
+                      <p className="text-[10px] text-blue-400 font-bold uppercase">Materials</p>
+                      <p className="text-xs font-bold text-blue-600">${proj.estimatedCost?.materials?.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-blue-400 font-bold uppercase">Labor</p>
+                      <p className="text-xs font-bold text-blue-600">${proj.estimatedCost?.labor?.toLocaleString()}</p>
+                    </div>
+                    {proj.estimatedDurationDays > 0 && (
+                      <div className="ml-auto text-right">
+                        <p className="text-[10px] text-blue-400 font-bold uppercase">Timeline</p>
+                        <p className="text-xs font-bold text-blue-600">{proj.estimatedDurationDays}d</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -183,7 +200,7 @@ export default function ProjectList() {
               exit={{ scale: 0.95, opacity: 0 }}
               className="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl relative overflow-hidden"
             >
-              <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-indigo-600" />
+              <div className="absolute top-0 left-0 w-full h-2 bg-linear-to-r from-blue-500 to-indigo-600" />
               <button 
                 onClick={() => setIsModalOpen(false)} 
                 className="absolute top-6 right-6 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-2xl transition"
