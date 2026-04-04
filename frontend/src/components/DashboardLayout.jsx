@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import { LayoutDashboard, FolderKanban, Calculator, CalendarClock, Bot, Settings, Bell, Search, Menu } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, Calculator, CalendarClock, Bot, Settings, Bell, Search, Menu, Map } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const SidebarItem = ({ icon: Icon, label, to }) => (
@@ -46,6 +46,7 @@ export default function DashboardLayout() {
           <SidebarItem icon={Calculator} label="Cost Estimator" to="/dashboard/cost-estimator" />
           <SidebarItem icon={CalendarClock} label="Scheduler" to="/dashboard/scheduler" />
           <SidebarItem icon={Bot} label="AI Copilot" to="/dashboard/ai-copilot" />
+          <SidebarItem icon={Map} label="Site Map" to="/dashboard/map" />
         </div>
 
         <div className="p-4 border-t border-[#E2E8F0]">

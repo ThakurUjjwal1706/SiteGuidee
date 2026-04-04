@@ -1,118 +1,151 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Calculator, BarChart3, PieChart as PieChartIcon } from 'lucide-react';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { Layers, Sparkles, Building2 } from 'lucide-react';
 
-const COLORS = ['#2563eb', '#f97316', '#10b981'];
+import InputControls from './cost-estimator/InputControls';
+import MaterialSelector, { MATERIAL_OPTIONS } from './cost-estimator/MaterialSelector';
+import SimulationPanel from './cost-estimator/SimulationPanel';
+import AdvancedVisualizer from './cost-estimator/AdvancedVisualizer';
+import AdvancedBreakdown from './cost-estimator/AdvancedBreakdown';
+import ChartComponent from './cost-estimator/ChartComponent';
+import InsightsPanel from './cost-estimator/InsightsPanel';
+import AIChat from './cost-estimator/AIChat';
 
 export default function CostEstimator() {
+  // Base Inputs
   const [area, setArea] = useState(1500);
-  const [buildingType, setBuildingType] = useState('Residential');
-  const [materialFactor, setMaterialFactor] = useState(1);
+  const [floors, setFloors] = useState(1);
+  const [baseRate, setBaseRate] = useState(2000); 
+  const [selectedVisualFloor, setSelectedVisualFloor] = useState(null);
 
-  const baseRate = buildingType === 'Residential' ? 120 : (buildingType === 'Commercial' ? 180 : 150);
-  
-  const materialsCost = area * baseRate * 0.6 * materialFactor;
-  const laborCost = area * baseRate * 0.4;
-  const totalCost = materialsCost + laborCost;
+  // Material Selections
+  const [materials, setMaterials] = useState({
+    cement: 'opc',
+    steel: 'tmt',
+    bricks: 'clay',
+    finishing: 'standard'
+  });
 
-  const pieData = [
-    { name: 'Materials', value: materialsCost },
-    { name: 'Labor', value: laborCost },
-  ];
+  // What-If Sliders
+  const [multipliers, setMultipliers] = useState({
+    material: 1.0,
+    labor: 1.0
+  });
 
-  const barData = [
-    { name: 'Concrete', cost: materialsCost * 0.4 },
-    { name: 'Steel', cost: materialsCost * 0.3 },
-    { name: 'Wood', cost: materialsCost * 0.15 },
-    { name: 'Other', cost: materialsCost * 0.15 },
-  ];
+  // Derived Values
+  const costData = useMemo(() => {
+    // Lookup multipliers
+    const cementMult = MATERIAL_OPTIONS.cement.options.find(o => o.id === materials.cement).mult;
+    const steelMult = MATERIAL_OPTIONS.steel.options.find(o => o.id === materials.steel).mult;
+    const bricksMult = MATERIAL_OPTIONS.bricks.options.find(o => o.id === materials.bricks).mult;
+    const finishingMult = MATERIAL_OPTIONS.finishing.options.find(o => o.id === materials.finishing).mult;
+
+    const totalArea = area * floors;
+    
+    // Base logical split (before multipliers)
+    const baseTotal = totalArea * baseRate;
+    
+    // Apply intelligence multipliers
+    const calcCement = baseTotal * 0.15 * cementMult * multipliers.material;
+    const calcSteel = baseTotal * 0.20 * steelMult * multipliers.material;
+    const calcBricks = baseTotal * 0.15 * bricksMult * multipliers.material;
+    const calcFinishing = baseTotal * 0.25 * finishingMult * multipliers.material;
+    const calcLabor = baseTotal * 0.25 * multipliers.labor;
+
+    const netCost = calcCement + calcSteel + calcBricks + calcFinishing + calcLabor;
+
+    return {
+      cement: calcCement,
+      steel: calcSteel,
+      bricks: calcBricks,
+      finishing: calcFinishing,
+      labor: calcLabor,
+      total: netCost,
+      months: 2 + floors
+    };
+  }, [area, floors, baseRate, materials, multipliers]);
 
   return (
-    <div className="space-y-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Cost Estimator Engine</h1>
-        <p className="text-gray-500">Calculate and simulate project costs instantly.</p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Controls */}
-        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="lg:col-span-4 bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-6">
-           <div className="flex items-center gap-3 mb-4 text-blue-600 font-semibold border-b border-gray-100 pb-4">
-             <Calculator className="w-5 h-5" /> Calculation Params
-           </div>
-           
-           <div>
-             <label className="block text-sm font-medium text-gray-700 mb-2">Area (sq ft): {area}</label>
-             <input type="range" min="500" max="10000" step="100" value={area} onChange={e => setArea(Number(e.target.value))} className="w-full accent-blue-600" />
-           </div>
-
-           <div>
-             <label className="block text-sm font-medium text-gray-700 mb-2">Building Type</label>
-             <select value={buildingType} onChange={e => setBuildingType(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 outline-none">
-               <option>Residential</option>
-               <option>Commercial</option>
-               <option>Industrial</option>
-             </select>
-           </div>
-
-           <div className="pt-4 border-t border-gray-100">
-             <label className="block text-sm font-medium text-gray-700 mb-2">Market Material Cost Factor: {materialFactor}x</label>
-             <input type="range" min="0.8" max="1.5" step="0.1" value={materialFactor} onChange={e => setMaterialFactor(Number(e.target.value))} className="w-full accent-orange-500" />
-             <p className="text-xs text-gray-400 mt-2">Adjust based on current market inflation for materials.</p>
-           </div>
-        </motion.div>
-
-        {/* Results */}
-        <div className="lg:col-span-8 flex flex-col gap-6">
-           {/* Total Output */}
-           <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="bg-gradient-to-tr from-gray-900 to-gray-800 p-8 rounded-3xl text-white flex justify-between items-center shadow-xl">
-              <div>
-                <p className="text-gray-400 font-medium mb-1">Total Estimated Cost</p>
-                <h2 className="text-5xl font-bold tracking-tight">${totalCost.toLocaleString(undefined, {maximumFractionDigits: 0})}</h2>
-              </div>
-              <div className="text-right space-y-2">
-                 <p className="text-gray-300">Materials: <span className="text-white font-bold">${materialsCost.toLocaleString(undefined, {maximumFractionDigits: 0})}</span></p>
-                 <p className="text-gray-300">Labor: <span className="text-white font-bold">${laborCost.toLocaleString(undefined, {maximumFractionDigits: 0})}</span></p>
-              </div>
-           </motion.div>
-
-           {/* Charts */}
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
-             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center">
-                 <h3 className="text-lg font-bold w-full text-left mb-4 flex items-center gap-2"><PieChartIcon className="w-5 h-5 text-gray-400" /> Cost Distribution</h3>
-                 <div className="h-[200px] w-full">
-                    <ResponsiveContainer>
-                      <PieChart>
-                        <Pie data={pieData} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                          {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                 </div>
-                 <div className="flex gap-4 text-sm font-medium mt-4">
-                   <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-blue-600"></span> Materials</span>
-                   <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-orange-500"></span> Labor</span>
-                 </div>
-             </motion.div>
-             
-             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><BarChart3 className="w-5 h-5 text-gray-400" /> Material Breakdown</h3>
-                 <div className="h-[220px] w-full">
-                    <ResponsiveContainer>
-                      <BarChart data={barData} layout="vertical" margin={{ left: 20, right: 20 }}>
-                        <XAxis type="number" hide />
-                        <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={70} tick={{ fontSize: 13, fill: '#64748b' }} />
-                        <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                        <Bar dataKey="cost" fill="#2563eb" radius={[0, 4, 4, 0]} barSize={20} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                 </div>
-             </motion.div>
-           </div>
+    <div className="min-h-full space-y-8 pb-10 max-w-7xl mx-auto">
+      
+      {/* ── Page Header ── */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-lg shadow-blue-500/30 flex-shrink-0">
+            <Building2 className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-black text-gray-900 tracking-tight flex items-center gap-3">
+              Smart Estimator & Materials
+              <span className="text-[10px] font-bold bg-indigo-100 text-indigo-700 px-2.5 py-1 rounded-full shadow-sm uppercase tracking-wider flex items-center gap-1">
+                <Sparkles className="w-3 h-3" /> Pro
+              </span>
+            </h1>
+            <p className="text-gray-500 text-sm mt-1 font-medium">
+              Real-time AI cost simulation driven by material intelligence.
+            </p>
+          </div>
         </div>
       </div>
+
+      {/* ── Base Input Controls ── */}
+      <section>
+        <InputControls
+          area={area} setArea={setArea}
+          floors={floors} setFloors={setFloors}
+          costPerSqft={baseRate} setCostPerSqft={setBaseRate}
+        />
+      </section>
+
+      {/* ── Visualizer & Breakdown Split ── */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <motion.div 
+          className="bg-white border border-gray-100 rounded-3xl overflow-hidden shadow-sm flex flex-col"
+        >
+          <div className="p-5 border-b border-gray-50 flex items-center justify-between">
+            <h3 className="font-bold text-gray-800">Dynamic Property Visualizer</h3>
+            <span className="text-[10px] uppercase font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded-md">Live Preview</span>
+          </div>
+          <div className="flex-1 min-h-[400px]">
+            <AdvancedVisualizer 
+              floors={floors} 
+              finishingQuality={materials.finishing}
+              selectedFloor={selectedVisualFloor}
+              setSelectedFloor={setSelectedVisualFloor}
+            />
+          </div>
+        </motion.div>
+
+        <motion.div>
+          <AdvancedBreakdown costs={costData} totalCost={costData.total} />
+        </motion.div>
+      </section>
+
+      {/* ── Material Intelligence & Selection ── */}
+      <section>
+        <div className="mb-2">
+          <h2 className="text-xl font-bold text-gray-900">Material Intelligence Sandbox</h2>
+          <p className="text-sm text-gray-500">Pick materials to see real-time impact on cost and structural integrity.</p>
+        </div>
+        <MaterialSelector selections={materials} setSelections={setMaterials} />
+        <SimulationPanel multipliers={multipliers} setMultipliers={setMultipliers} />
+      </section>
+
+      {/* ── AI & Insights Split ── */}
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-1 h-full">
+          <InsightsPanel selections={materials} />
+        </div>
+        <div className="lg:col-span-2 h-full">
+          <AIChat />
+        </div>
+      </section>
+
+      {/* ── Charts ── */}
+      <section>
+        <ChartComponent totalCost={costData.total} updatedCosts={costData} />
+      </section>
+
     </div>
   );
 }

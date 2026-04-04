@@ -6,6 +6,7 @@ import ProjectList from './pages/ProjectList';
 import CostEstimator from './pages/CostEstimator';
 import AppScheduler from './pages/AppScheduler';
 import AICopilot from './pages/AICopilot';
+import MapDashboard from './pages/MapDashboard';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
           <Route path="cost-estimator" element={<CostEstimator />} />
           <Route path="scheduler" element={<AppScheduler />} />
           <Route path="ai-copilot" element={<AICopilot />} />
+          <Route path="map" element={<MapDashboard />} />
         </Route>
       </Routes>
     </Router>
