@@ -1,73 +1,122 @@
 const express = require('express');
 const router = express.Router();
 const Project = require('../models/Project');
+const { calculateCost, getScheduleTemplate, estimateTotalDuration } = require('../utils/costEngine');
 
 // GET all projects
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
   try {
     const projects = await Project.find().sort({ createdAt: -1 });
     res.json(projects);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // GET single project
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req, res, next) => {
   try {
     const project = await Project.findById(req.params.id);
     if (!project) return res.status(404).json({ message: 'Project not found' });
     res.json(project);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-// POST new project (calculate cost here)
-router.post('/', async (req, res) => {
-  const { name, location, area, budget, buildingType } = req.body;
+// POST new project — uses costEngine for full breakdown
+router.post('/', async (req, res, next) => {
+  const { name, location, area, budget, buildingType, floors = 1, materialFactor = 1.0, laborFactor = 1.0 } = req.body;
 
-  // Simple cost calculation logic
-  let baseRate = 100; // Base arbitrary rate per sq ft depending on type
-  if (buildingType === 'Residential') baseRate = 120;
-  if (buildingType === 'Commercial') baseRate = 180;
-  if (buildingType === 'Industrial') baseRate = 150;
+  if (!name || !location || !area || !budget || !buildingType) {
+    return res.status(400).json({ message: 'Missing required fields: name, location, area, budget, buildingType' });
+  }
 
-  const materialsCost = area * baseRate * 0.6; // 60% is material
-  const laborCost = area * baseRate * 0.4; // 40% is labor
-  const totalCost = materialsCost + laborCost;
+  const costResult = calculateCost({ area: Number(area), buildingType, floors, materialFactor, laborFactor });
+  const tasks = getScheduleTemplate(buildingType);
+  const totalDays = estimateTotalDuration(tasks);
 
   const project = new Project({
-    name, location, area, budget, buildingType,
-    estimatedCost: {
-      materials: materialsCost,
-      labor: laborCost,
-      total: totalCost
-    },
-    tasks: [
-      { name: 'Site Preparation', duration: 7, dependencies: [] },
-      { name: 'Foundation', duration: 14, dependencies: ['Site Preparation'] },
-      { name: 'Structure', duration: 30, dependencies: ['Foundation'] },
-      { name: 'Electrical & Plumbing', duration: 20, dependencies: ['Structure'] },
-      { name: 'Finishing', duration: 25, dependencies: ['Electrical & Plumbing'] }
-    ]
+    name,
+    location,
+    area: Number(area),
+    budget: Number(budget),
+    buildingType,
+    floors,
+    estimatedCost: costResult.summary,
+    costBreakdown: costResult.breakdown,
+    materialBreakdown: costResult.materialBreakdown,
+    tasks,
+    estimatedDurationDays: totalDays,
   });
 
   try {
     const newProject = await project.save();
     res.status(201).json(newProject);
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    next(err);
+  }
+});
+
+// PUT update project status or task status
+router.put('/:id', async (req, res, next) => {
+  try {
+    const updated = await Project.findByIdAndUpdate(
+      req.params.id,
+      { $set: req.body },
+      { new: true, runValidators: true }
+    );
+    if (!updated) return res.status(404).json({ message: 'Project not found' });
+    res.json(updated);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH update a specific task's status within a project
+router.patch('/:id/tasks/:taskIndex', async (req, res, next) => {
+  try {
+    const { status } = req.body;
+    const project = await Project.findById(req.params.id);
+    if (!project) return res.status(404).json({ message: 'Project not found' });
+
+    const taskIdx = parseInt(req.params.taskIndex);
+    if (taskIdx < 0 || taskIdx >= project.tasks.length) {
+      return res.status(400).json({ message: 'Invalid task index' });
+    }
+
+    project.tasks[taskIdx].status = status;
+    await project.save();
+    res.json(project);
+  } catch (err) {
+    next(err);
   }
 });
 
 // DELETE project
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', async (req, res, next) => {
   try {
-    await Project.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Project deleted' });
+    const deleted = await Project.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ message: 'Project not found' });
+    res.json({ message: 'Project deleted successfully' });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
+  }
+});
+
+// POST estimate cost without saving (for the live cost estimator UI)
+router.post('/estimate', async (req, res, next) => {
+  try {
+    const { area, buildingType, floors = 1, materialFactor = 1.0, laborFactor = 1.0 } = req.body;
+
+    if (!area || !buildingType) {
+      return res.status(400).json({ message: 'area and buildingType are required' });
+    }
+
+    const result = calculateCost({ area: Number(area), buildingType, floors, materialFactor, laborFactor });
+    res.json(result);
+  } catch (err) {
+    next(err);
   }
 });
 
