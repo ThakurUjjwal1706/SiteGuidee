@@ -2,7 +2,8 @@ import { useState, useCallback } from 'react';
 import MapView from './map/MapView';
 import InfoPanel from './map/InfoPanel';
 
-const OW_KEY = '';
+const OW_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY || '';
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY || '';
 
 // ── Mock dataset ──────────────────────────────────────────────
 export const PROJECTS = [
@@ -82,7 +83,7 @@ export function getRiskLevel(lat, lng) {
 async function reverseGeocode(lat, lng) {
   try {
     const res = await fetch(
-      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=`
+      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}`
     );
     const data = await res.json();
     if (data.results?.length) {

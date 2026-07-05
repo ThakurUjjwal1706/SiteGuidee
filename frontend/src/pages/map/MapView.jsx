@@ -2,8 +2,7 @@ import { useEffect, useRef } from 'react';
 
 // Key from project config — also reads from VITE env if set
 const GOOGLE_MAPS_API_KEY =
-  import.meta.env.VITE_GOOGLE_MAPS_KEY ||
-  '';
+  import.meta.env.VITE_GOOGLE_MAPS_KEY || '';
 
 const STATUS_COLORS = {
   ongoing:   '#34C759',
